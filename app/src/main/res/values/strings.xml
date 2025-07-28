@@ -123,4 +123,50 @@
     <string name="tvVideoCount">%d videos selected</string>
     <string name="tvLocationStatus">Location not selected</string>
 
+
+
+        <!-- Existing strings from previous messages -->
+        <string name="location_permission_required">Location permission is required to get current location</string>
+        <string name="address_required">Address is required</string>
+        <string name="select_location">Please select a location on the map</string>
+        <string name="could_not_get_location">Could not get current location</string>
+        <string name="error_getting_location">Error getting location: %1$s</string>
+        <string name="error_getting_address">Error getting address: %1$s</string>
+        <string name="could_not_get_address">Could not get address</string>
+        <string name="user_not_authenticated">User not authenticated</string>
+        <string name="property_title_required">Property title is required</string>
+        <string name="property_type_required">Property type is required</string>
+        <string name="price_required">Price is required</string>
+        <string name="invalid_price_format">Invalid price format</string>
+        <string name="image_required">At least one image is required</string>
+        <string name="error_creating_owner_document">Error creating owner document: %1$s</string>
+        <string name="could_not_play_video">Could not play video: %1$s</string>
+        <string name="could_not_view_image">Could not view image: %1$s</string>
+
+        <!-- New strings for SignUpPage -->
+        <string name="full_name_required">Full Name is required</string>
+        <string name="invalid_email">Enter valid email</string>
+        <string name="password_too_short">Password must be at least 6 characters</string>
+        <string name="passwords_do_not_match">Passwords do not match</string>
+        <string name="invalid_mobile_number">Enter valid mobile number</string>
+        <string name="sign_up_failed">Sign up failed: %1$s</string>
+        <string name="failed_to_get_user_id">Failed to get user ID</string>
+        <string name="failed_to_create_user">Failed to create user: %1$s</string>
+        <string name="google_sign_in_failed">Google Sign-In Failed: %1$s</string>
+        <string name="failed_to_save_user_data">Failed to save user data: %1$s</string>
+        <string name="select_role">Please select a role</string>
+
+    <string name="no_properties_found">No properties found</string>
+    <string name="error_fetching_properties">Error fetching properties: %1$s</string>
+
+    <string name="login_failed">Login failed: %1$s</string>
+    <string name="user_id_not_found">User ID not found</string>
+    <string name="user_data_not_found">User data not found</string>
+    <string name="failed_to_fetch_user_role">Failed to fetch user role: %1$s</string>
+    <string name="navigation_error">Navigation error: %1$s</string>
+    <string name="role_not_found">Role not found</string>
+    <string name="tenant_selected">UI selected: Tenant (Saved role will be used)</string>
+    <string name="owner_selected">UI selected: Owner (Saved role will be used)</string>
+
+
 </resources>

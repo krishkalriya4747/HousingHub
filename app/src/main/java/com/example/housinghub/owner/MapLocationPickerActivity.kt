@@ -70,6 +70,14 @@ class MapLocationPickerActivity : AppCompatActivity(), OnMapReadyCallback {
             updateMapMarker()
             getAddressFromLocation(latLng)
         }
+        
+        // Set up camera move listener to update address
+        map.setOnCameraIdleListener {
+            map.cameraPosition.target.let { latLng ->
+                selectedLocation = latLng
+                getAddressFromLocation(latLng)
+            }
+        }
 
         // Check and request location permission if needed
         if (checkLocationPermission()) {
@@ -136,6 +144,8 @@ class MapLocationPickerActivity : AppCompatActivity(), OnMapReadyCallback {
                 val addressText = address.getAddressLine(0)
                 binding.tvSelectedAddress.text = addressText
                 selectedAddress = addressText
+                // Update map camera
+                map.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
             }
         } catch (e: Exception) {
             e.printStackTrace()

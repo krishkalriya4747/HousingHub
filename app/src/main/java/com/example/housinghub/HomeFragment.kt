@@ -47,7 +47,7 @@ class HomeFragment : Fragment(), BookmarkClickListener {
     }
 
     private fun fetchProperties() {
-        // Get all owners' properties from the Available collection
+        // Get all properties from the Available collection under each owner
         firestore.collection("Properties")
             .get()
             .addOnSuccessListener { ownerDocs ->
@@ -56,9 +56,13 @@ class HomeFragment : Fragment(), BookmarkClickListener {
                 val totalQueries = ownerDocs.size()
 
                 if (totalQueries == 0) {
+                    // No properties found, just show empty list
                     propertyAdapter.updateData(emptyList())
                     return@addOnSuccessListener
                 }
+
+                // Create a set to track completed owners
+                val completedOwners = mutableSetOf<String>()
 
                 // For each owner, fetch only Available properties
                 ownerDocs.forEach { ownerDoc ->

@@ -19,7 +19,7 @@
 
         <!-- Owner Side Activities -->
         <activity android:name=".OwnerAddPropertyActivity"
-         android:windowSoftInputMode="adjustResize" /> <!-- ✅ -->
+            android:windowSoftInputMode="adjustResize" /> <!-- ✅ -->
 
         <activity android:name=".owner.OwnerManagePropertyActivity" />
         <activity android:name=".owner.OwnerChatActivity" />

@@ -13,7 +13,6 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
-import com.example.housinghub.OwnerHomePageActivity
 import com.example.housinghub.utils.UserSessionManager
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
@@ -25,14 +24,13 @@ import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 
-
 class SignUpPage : AppCompatActivity() {
 
     private lateinit var signupLauncher: ActivityResultLauncher<Intent>
     private lateinit var auth: FirebaseAuth
     private lateinit var googleSignInClient: GoogleSignInClient
     private var selectedRole = "tenant" // default role
-    private lateinit var mobileNumberInput: EditText // Add mobile number field
+    private lateinit var mobileNumberInput: EditText
 
     @SuppressLint("MissingInflatedId")
     @RequiresApi(Build.VERSION_CODES.M)
@@ -41,14 +39,16 @@ class SignUpPage : AppCompatActivity() {
         setContentView(R.layout.activity_sign_up_page)
 
         auth = FirebaseAuth.getInstance()
-        mobileNumberInput = findViewById(R.id.mobileNumberInput) // Initialize mobile number field
+        mobileNumberInput = findViewById(R.id.mobileNumberInput)
 
+        // Configure Google Sign-In
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(getString(R.string.default_web_client_id))
             .requestEmail()
             .build()
         googleSignInClient = GoogleSignIn.getClient(this, gso)
 
+        // Initialize Google Sign-In launcher
         signupLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == RESULT_OK) {
                 val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
@@ -56,11 +56,12 @@ class SignUpPage : AppCompatActivity() {
                     val account = task.getResult(ApiException::class.java)!!
                     firebaseAuthWithGoogle(account.idToken!!)
                 } catch (e: ApiException) {
-                    Toast.makeText(this, "Google Sign-In Failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, getString(R.string.google_sign_in_failed, e.message), Toast.LENGTH_SHORT).show()
                 }
             }
         }
 
+        // Initialize views
         val tenantButton: Button = findViewById(R.id.tenantButton)
         val ownerButton: Button = findViewById(R.id.ownerButton)
         val loginTab: Button = findViewById(R.id.loginTab)
@@ -73,6 +74,7 @@ class SignUpPage : AppCompatActivity() {
         val createAccountButton: Button = findViewById(R.id.createAccountButton)
         val googleSignInButton: Button = findViewById(R.id.googleSignInButton)
 
+        // Tab navigation
         signupTab.setOnClickListener {
             signupTab.setTextColor(getColor(R.color.black))
             loginTab.setTextColor(getColor(android.R.color.darker_gray))
@@ -84,6 +86,7 @@ class SignUpPage : AppCompatActivity() {
             finish()
         }
 
+        // Role selection
         tenantButton.setOnClickListener {
             selectedRole = "tenant"
             tenantButton.backgroundTintList = getColorStateList(R.color.tenant_selected)
@@ -96,40 +99,43 @@ class SignUpPage : AppCompatActivity() {
             tenantButton.backgroundTintList = getColorStateList(android.R.color.darker_gray)
         }
 
+        // Email/Password Sign-Up
         createAccountButton.setOnClickListener {
             val fullName = fullNameInput.text.toString().trim()
             val email = emailInput.text.toString().trim()
             val password = passwordInput.text.toString().trim()
             val confirmPassword = confirmPasswordInput.text.toString().trim()
-            val mobile = mobileNumberInput.text.toString().trim() // Get mobile number
+            val mobile = mobileNumberInput.text.toString().trim()
 
+            // Input validation
             if (fullName.isEmpty()) {
-                fullNameInput.error = "Full Name is required"
+                fullNameInput.error = getString(R.string.full_name_required)
                 return@setOnClickListener
             }
             if (email.isEmpty() || !Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-                emailInput.error = "Enter valid email"
+                emailInput.error = getString(R.string.invalid_email)
                 return@setOnClickListener
             }
             if (password.isEmpty() || password.length < 6) {
-                passwordInput.error = "Password must be at least 6 characters"
+                passwordInput.error = getString(R.string.password_too_short)
                 return@setOnClickListener
             }
             if (password != confirmPassword) {
-                confirmPasswordInput.error = "Passwords do not match"
+                confirmPasswordInput.error = getString(R.string.passwords_do_not_match)
                 return@setOnClickListener
             }
             if (mobile.isEmpty() || mobile.length < 10) {
-                mobileNumberInput.error = "Enter valid mobile number"
+                mobileNumberInput.error = getString(R.string.invalid_mobile_number)
                 return@setOnClickListener
             }
 
+            // Create user with email and password
             auth.createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener(this) { task ->
                     if (task.isSuccessful) {
                         val userId = auth.currentUser?.uid
                         if (userId == null) {
-                            Toast.makeText(this, "Failed to get user ID", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this, getString(R.string.failed_to_get_user_id), Toast.LENGTH_SHORT).show()
                             return@addOnCompleteListener
                         }
 
@@ -142,91 +148,163 @@ class SignUpPage : AppCompatActivity() {
                             "createdAt" to System.currentTimeMillis()
                         )
 
-                        // Use different collection based on role
-                        val collectionName = if (selectedRole == "owner") "Owners" else "Tenants"
-                        
-                        // Use email as document ID
-                        Firebase.firestore.collection(collectionName)
+                        val db = Firebase.firestore
+                        val collection = if (selectedRole == "owner") "Owners" else "Tenants"
+
+                        // Save user data
+                        db.collection(collection)
                             .document(email)
-                            .set(userMap)
+                            .set(userMap, SetOptions.merge())
                             .addOnSuccessListener {
                                 // Save to session
                                 val sessionManager = UserSessionManager(this)
                                 sessionManager.saveUserData(fullName, email, mobile)
-                                navigateToRoleHome(selectedRole)
+
+                                // Handle owner-specific Firestore setup
+                                if (selectedRole == "owner") {
+                                    setupOwnerProperties(email)
+                                } else {
+                                    navigateToRoleHome(selectedRole)
+                                }
                             }
                             .addOnFailureListener { e ->
-                                Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this, getString(R.string.failed_to_create_user, e.message), Toast.LENGTH_SHORT).show()
                             }
                     } else {
-                        Toast.makeText(this, "Sign up failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, getString(R.string.sign_up_failed, task.exception?.message), Toast.LENGTH_SHORT).show()
                     }
                 }
         }
 
+        // Google Sign-In
         googleSignInButton.setOnClickListener {
+            if (selectedRole.isEmpty()) {
+                Toast.makeText(this, getString(R.string.select_role), Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
             val signInIntent = googleSignInClient.signInIntent
             signupLauncher.launch(signInIntent)
         }
     }
 
+    private fun setupOwnerProperties(email: String) {
+        val db = Firebase.firestore
+        db.collection("Properties")
+            .document(email)
+            .set(mapOf("createdAt" to com.google.firebase.Timestamp.now()))
+            .addOnSuccessListener {
+                val dummy = mapOf("dummy" to true)
+                // Create Available collection
+                db.collection("Properties").document(email)
+                    .collection("Documents")
+                    .document("init")
+                    .set(dummy)
+                    .addOnSuccessListener {
+                        // Create property collection
+                        db.collection("Properties").document(email)
+                            .collection("documents")
+                            .document("init")
+                            .set(dummy)
+                            .addOnSuccessListener {
+                                navigateToRoleHome("owner")
+                            }
+                            .addOnFailureListener { e ->
+                                Toast.makeText(this, getString(R.string.failed_to_save_user_data, e.message), Toast.LENGTH_SHORT).show()
+                            }
+                    }
+                    .addOnFailureListener { e ->
+                        Toast.makeText(this, getString(R.string.failed_to_save_user_data, e.message), Toast.LENGTH_SHORT).show()
+                    }
+            }
+            .addOnFailureListener { e ->
+                Toast.makeText(this, getString(R.string.failed_to_save_user_data, e.message), Toast.LENGTH_SHORT).show()
+            }
+    }
+
     private fun navigateToRoleHome(role: String) {
-        if (role.lowercase() == "owner") {
-            startActivity(Intent(this, OwnerHomePageActivity ::class.java))
+        val intent = if (role.equals("owner", ignoreCase = true)) {
+            Intent(this, OwnerHomePageActivity::class.java)
         } else {
-            startActivity(Intent(this, HomePageActivity::class.java))
+            Intent(this, HomePageActivity::class.java)
         }
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        startActivity(intent)
         finish()
     }
 
-    private fun updateTabUnderline(activeTab: Button, underline: View) {
+    private fun updateTabUnderline(activeTab: Button, tabUnderline: View) {
         activeTab.post {
-            val params = underline.layoutParams
+            val params = tabUnderline.layoutParams
             params.width = activeTab.width
-            underline.layoutParams = params
-            underline.translationX = activeTab.x + (activeTab.width - underline.width)
+            tabUnderline.layoutParams = params
+            tabUnderline.animate()
+                .translationX(activeTab.x)
+                .setDuration(200)
+                .start()
         }
     }
 
-    private fun firebaseAuthWithGoogle(idToken: String) {
+    private fun firebaseAuthWithGoogle(idToken: String?) {
+        if (idToken == null) {
+            Toast.makeText(this, getString(R.string.google_sign_in_failed, "Invalid token"), Toast.LENGTH_SHORT).show()
+            return
+        }
+
         val credential = GoogleAuthProvider.getCredential(idToken, null)
         auth.signInWithCredential(credential)
             .addOnCompleteListener(this) { task ->
                 if (task.isSuccessful) {
-                    val userEmail = auth.currentUser?.email ?: return@addOnCompleteListener
+                    val user = auth.currentUser
+                    if (user == null) {
+                        Toast.makeText(this, getString(R.string.failed_to_get_user_id), Toast.LENGTH_SHORT).show()
+                        return@addOnCompleteListener
+                    }
 
+                    val userEmail = user.email ?: return@addOnCompleteListener
                     val userMap = mapOf(
-                        "role" to selectedRole,
+                        "fullName" to (user.displayName ?: ""),
                         "email" to userEmail,
-                        "fullName" to (auth.currentUser?.displayName ?: ""),
-                        "mobileNumber" to "", // Initialize empty mobile number for Google sign-in
+                        "mobileNumber" to (user.phoneNumber ?: ""),
+                        "role" to selectedRole,
                         "documentUploaded" to false,
                         "createdAt" to System.currentTimeMillis()
-                    )
+                        )
 
-                    // Use different collection based on role
-                    val collectionName = if (selectedRole == "owner") "Owners" else "Tenants"
+                    val collection = if (selectedRole == "owner") "Owners" else "Tenants"
 
-                    // Use email as document ID
+                    // Save user data
                     Firebase.firestore
-                        .collection(collectionName)
+                        .collection(collection)
                         .document(userEmail)
                         .set(userMap, SetOptions.merge())
                         .addOnSuccessListener {
-                            // Save to session
-                            val sessionManager = UserSessionManager(this)
-                            sessionManager.saveUserData(
-                                auth.currentUser?.displayName ?: "",
-                                userEmail,
-                                ""  // Mobile number will be empty initially for Google sign-in
+
+                            data class HousingItem(
+                                // ... other fields
+                                val price: String, // Incorrect type
                             )
-                            navigateToRoleHome(selectedRole)
+
+                            // BEFORE
+                            data class Property(
+                                val address: String? = null,
+                                val price: String? = null, // Problem: Expecting String
+                                val bedrooms: Int? = null,
+                            )
+                            val sessionManager = UserSessionManager(this)
+                            sessionManager.saveUserData(user.displayName ?: "", userEmail, user.phoneNumber ?: "")
+
+                            // Handle owner-specific setup
+                            if (selectedRole == "owner") {
+                                setupOwnerProperties(userEmail)
+                            } else {
+                                navigateToRoleHome(selectedRole)
+                            }
                         }
                         .addOnFailureListener { e ->
-                            Toast.makeText(this, "Failed to save user data: ${e.message}", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this, getString(R.string.failed_to_save_user_data, e.message), Toast.LENGTH_LONG).show()
                         }
                 } else {
-                    Toast.makeText(this, "Google Sign-In Failed: ${task.exception?.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, getString(R.string.google_sign_in_failed, task.exception?.message), Toast.LENGTH_LONG).show()
                 }
             }
     }
