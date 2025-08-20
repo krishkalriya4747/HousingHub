@@ -11,6 +11,7 @@ import com.example.housinghub.model.Property
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import java.util.Locale
 
 class ManagePropertyAdapter(
     private val propertyList: MutableList<Property>,
@@ -30,13 +31,13 @@ class ManagePropertyAdapter(
         fun bind(property: Property) {
             title.text = property.title
             location.text = property.location
-            price.text = "₹${property.price}"
-            
+            price.text = String.format(Locale.getDefault(), "₹%.0f", property.price)
+
             availabilityButton.text = if (property.isAvailable) "Mark Unavailable" else "Mark Available"
             availabilityButton.setOnClickListener {
                 toggleAvailability(property)
             }
-            
+
             manageButton.setOnClickListener {
                 onManageClick(property)
             }
@@ -58,7 +59,7 @@ class ManagePropertyAdapter(
     private fun toggleAvailability(property: Property) {
         val ownerEmail = auth.currentUser?.email ?: return
         val newAvailability = !property.isAvailable
-        
+
         // Source and destination collection names
         val sourceCollection = if (property.isAvailable) "Available" else "Unavailable"
         val destinationCollection = if (newAvailability) "Available" else "Unavailable"
